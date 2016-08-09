@@ -21,7 +21,7 @@ def main(env_name, monitor=True, load=False, seed=0):
 
     if monitor:
         env.monitor.start(view_path, video_callable=None, force=True, seed=seed)
-    for i_episode in xrange(100):
+    for i_episode in xrange(10000):
         observation = env.reset()
         agent.reset_state(observation)
         ep_end = False
@@ -31,7 +31,8 @@ def main(env_name, monitor=True, load=False, seed=0):
             observation, reward, ep_end, _ = env.step(action)
             agent.update_experience(observation, action, reward, ep_end)
             agent.train()
-            print('ep %i\tstep %i\teps %f\tact %i\tr %i\tQ %f' % (i_episode, agent.step, agent.eps, action, reward, agent.Q))
+            #print('ep %i\tstep %i\teps %f\tact %i\tr %i\tQ %f' % (i_episode, agent.step, agent.eps, action, reward, agent.Q))
+            print('%i\t%i\t%f\t%i\t%i\t%f' % (i_episode, agent.step, agent.eps, action, reward, agent.Q))
             if ep_end:
                 agent.save_model(model_path)
                 break
