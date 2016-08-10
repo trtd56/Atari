@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import copy, sys
+import copy, sys, random
 import numpy as np
 from collections import deque
 import scipy.misc as spm
@@ -33,24 +33,26 @@ class Neuralnet(Chain):
 class Agent():
 
     def __init__(self, n_act, seed):
+        random.seed(seed)
         np.random.seed(seed)
         sys.setrecursionlimit(10000)
 
         self.n_history = 4
         self.gamma = 0.99
-        self.mem_size = 1e5
+        self.mem_size = 1e4
         self.batch_size = 32
         self.eps = 1
-        self.eps_decay = 1e-3
-        self.eps_min = 0
-        self.exploration = 1e3
-        self.train_freq = 1
+        self.eps_decay = 1e-6
+        self.eps_min = 0.1
+        self.exploration = 1e4
+        self.train_freq = 4
         self.target_update_freq = 1e4
+        self.flame_skip = 4
 
         self.model = Neuralnet(self.n_history, n_act)
         self.target_model = copy.deepcopy(self.model)
-        #self.optimizer = optimizers.Adam()
-        self.optimizer = optimizers.RMSpropGraves(lr=0.00025, alpha=0.95, momentum=0.95, eps=0.01)
+        self.optimizer = optimizers.Adam()
+        #self.optimizer = optimizers.RMSpropGraves(lr=0.00025, alpha=0.95, momentum=0.95, eps=0.01)
         self.optimizer.setup(self.model)
 
         self.n_act = n_act
@@ -58,6 +60,7 @@ class Agent():
         self.loss = 0
         self.step = 0
         self.Q = 0
+        self.action = None
 
     def stock_experience(self, st, act, r, st_dash, ep_end):
         self.memory.append((st, act, r, st_dash, ep_end))
@@ -82,9 +85,9 @@ class Agent():
         self.loss = loss.data
         return loss
 
-    def suffle_memory(self):
-        mem = np.array(self.memory)
-        return np.random.permutation(mem)
+    #def suffle_memory(self):
+    #    mem = np.array(self.memory)
+    #    return np.random.permutation(mem)
 
     def parse_batch(self, batch):
         st, act, r, st_dash, ep_end = [], [], [], [], []
@@ -102,8 +105,9 @@ class Agent():
         return st, act, r, st_dash, ep_end
 
     def experience_replay(self):
-        mem = self.suffle_memory()
-        batch = mem[0:self.batch_size]
+        #mem = self.suffle_memory()
+        #batch = mem[0:self.batch_size]
+        batch = random.sample(self.memory, self.batch_size)
         st, act, r, st_d, ep_end = self.parse_batch(batch)
         self.model.zerograds()
         loss = self.forward(st, act, r, st_d, ep_end)
@@ -121,16 +125,16 @@ class Agent():
             return np.asarray(a, dtype=np.int8), max(Q)
 
     def reduce_eps(self):
-        if self.eps > self.eps_min and self.exploration < self.step:
+        if self.eps > self.eps_min:
             self.eps -= self.eps_decay
 
     def train(self):
         if len(self.memory) >= self.exploration:
             if self.step % self.train_freq == 0:
                 self.experience_replay()
-                self.reduce_eps()
             if self.step % self.target_update_freq == 0:
                 self.target_model = copy.deepcopy(self.model)
+            self.reduce_eps()
         self.step += 1
 
     def scale_image(self, observation):
@@ -149,9 +153,10 @@ class Agent():
         self.state[3] = img.astype(np.uint8)
 
     def act(self):
-        st = np.asanyarray(self.state.reshape(1, 4, 84, 84), dtype=np.float32)
-        action, self.Q = self.get_action(st)
-        return action
+        if self.action == None or self.step % self.flame_skip == 0:
+            st = np.asanyarray(self.state.reshape(1, 4, 84, 84), dtype=np.float32)
+            self.action, self.Q = self.get_action(st)
+        return self.action
 
     def update_experience(self, observation, action, reward, ep_end):
         self.prev_state = copy.deepcopy(self.state)
