@@ -42,17 +42,17 @@ class Agent():
         self.mem_size = 1e4
         self.batch_size = 32
         self.eps = 1
-        self.eps_decay = 1e-6
+        self.eps_decay = 1e-7
         self.eps_min = 0.1
         self.exploration = 1e4
         self.train_freq = 4
         self.target_update_freq = 1e4
-        self.flame_skip = 4
+        self.flame_skip = 1
 
         self.model = Neuralnet(self.n_history, n_act)
         self.target_model = copy.deepcopy(self.model)
-        self.optimizer = optimizers.Adam()
-        #self.optimizer = optimizers.RMSpropGraves(lr=0.00025, alpha=0.95, momentum=0.95, eps=0.01)
+        #self.optimizer = optimizers.Adam()
+        self.optimizer = optimizers.RMSpropGraves(lr=0.00025, alpha=0.95, momentum=0.95, eps=0.01)
         self.optimizer.setup(self.model)
 
         self.n_act = n_act
@@ -85,10 +85,6 @@ class Agent():
         self.loss = loss.data
         return loss
 
-    #def suffle_memory(self):
-    #    mem = np.array(self.memory)
-    #    return np.random.permutation(mem)
-
     def parse_batch(self, batch):
         st, act, r, st_dash, ep_end = [], [], [], [], []
         for i in xrange(self.batch_size):
@@ -105,8 +101,6 @@ class Agent():
         return st, act, r, st_dash, ep_end
 
     def experience_replay(self):
-        #mem = self.suffle_memory()
-        #batch = mem[0:self.batch_size]
         batch = random.sample(self.memory, self.batch_size)
         st, act, r, st_d, ep_end = self.parse_batch(batch)
         self.model.zerograds()

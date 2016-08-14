@@ -25,16 +25,21 @@ def main(env_name, monitor=True, load=False, seed=0):
         observation = env.reset()
         agent.reset_state(observation)
         ep_end = False
+        q_list = []
+        r_list = []
         while not ep_end:
             env.render()
             action = agent.act()
             observation, reward, ep_end, _ = env.step(action)
             agent.update_experience(observation, action, reward, ep_end)
             agent.train()
-            print('%i\t%i\t%f\t%i\t%i\t%f' % (i_episode, agent.step, agent.eps, action, reward, agent.Q))
+            q_list.append(agent.Q)
+            r_list.append(reward)
+            #print('%i\t%i\t%f\t%i\t%i\t%f' % (i_episode, agent.step, agent.eps, action, reward, agent.Q))
             if ep_end:
                 agent.save_model(model_path)
                 break
+        print('%i\t%i\t%f\t%i\t%f' % (i_episode, agent.step, agent.eps, sum(r_list), sum(q_list)/float(len(q_list))))
     if monitor:
         env.monitor.close()
 
