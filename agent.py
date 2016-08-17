@@ -9,7 +9,7 @@ import scipy.misc as spm
 import chainer
 import chainer.links as L
 import chainer.functions as F
-from chainer import Chain, optimizers, Variable, serializers
+from chainer import Chain, optimizers, Variable, serializers, cuda
 
 class Neuralnet(Chain):
 
@@ -18,8 +18,11 @@ class Neuralnet(Chain):
             L1 = F.Convolution2D(n_in, 32, ksize=8, stride=4, nobias=False, wscale=np.sqrt(2)),
             L2 = F.Convolution2D(32, 64, ksize=4, stride=2, nobias=False, wscale=np.sqrt(2)),
             L3 = F.Convolution2D(64, 64, ksize=3, stride=1, nobias=False, wscale=np.sqrt(2)),
-            L4 = L.Linear(3136, 512),
-            Q_value = L.Linear(512, n_out)
+            #L4 = L.Linear(3136, 512),
+            L4 = L.Linear(3136, 512, wscale=np.sqrt(2)),
+            #Q_value = L.Linear(512, n_out)
+            Q_value = L.Linear(512, n_out, initalW=np.zeros((n_out, 512), dtype=np.float32))
+
         )
 
     def Q_func(self, x):
@@ -42,17 +45,18 @@ class Agent():
         self.mem_size = 1e4
         self.batch_size = 32
         self.eps = 1
-        self.eps_decay = 1e-7
+        self.eps_decay = 1e-6
         self.eps_min = 0.1
         self.exploration = 1e4
         self.train_freq = 4
         self.target_update_freq = 1e4
         self.flame_skip = 1
 
-        self.model = Neuralnet(self.n_history, n_act)
+        #self.model = Neuralnet(self.n_history, n_act)
+        self.model = Neuralnet(self.n_history, n_act).to_gpu()
         self.target_model = copy.deepcopy(self.model)
-        #self.optimizer = optimizers.Adam()
-        self.optimizer = optimizers.RMSpropGraves(lr=0.00025, alpha=0.95, momentum=0.95, eps=0.01)
+        self.optimizer = optimizers.Adam()
+        #self.optimizer = optimizers.RMSpropGraves(lr=0.00025, alpha=0.95, momentum=0.95, eps=0.01)
         self.optimizer.setup(self.model)
 
         self.n_act = n_act
@@ -68,19 +72,24 @@ class Agent():
             self.memory.popleft()
 
     def forward(self, st, act, r, st_dash, ep_end):
-        s = Variable(st)
-        s_dash = Variable(st_dash)
+        #s = Variable(st)
+        s = Variable(cuda.to_gpu(st))
+        #s_dash = Variable(st_dash)
+        s_dash = Variable(cuda.to_gpu(st_dash))
         Q = self.model.Q_func(s)
         tmp = self.target_model.Q_func(s_dash)
         tmp = list(map(np.max, tmp.data))
         max_Q_dash = np.asanyarray(tmp, dtype=np.float32)
-        target = np.asanyarray(copy.deepcopy(Q.data), dtype=np.float32)
+        #target = np.asanyarray(copy.deepcopy(Q.data), dtype=np.float32)
+        target = np.asanyarray(copy.deepcopy(Q.data.get()), dtype=np.float32)
         for i in xrange(self.batch_size):
             target[i, act[i]] = r[i] + (self.gamma * max_Q_dash[i]) * (not ep_end[i])
-        td = Variable(target) - Q  # TD error
+        #td = Variable(target) - Q  # TD error
+        td = Variable(cuda.to_gpu(target)) - Q  # TD error
         td_tmp = td.data + 1000.0 * (abs(td.data) <= 1)  # Avoid zero division
         td_clip = td * (abs(td.data) <= 1) + td/abs(td_tmp) * (abs(td.data) > 1)
-        zero_val = Variable(np.zeros((self.batch_size, self.n_act), dtype=np.float32))
+        #zero_val = Variable(np.zeros((self.batch_size, self.n_act), dtype=np.float32))
+        zero_val = Variable(cupy.to_gpu(np.zeros((self.batch_size, self.n_act), dtype=np.float32)))
         loss = F.mean_squared_error(td_clip, zero_val)
         self.loss = loss.data
         return loss
@@ -112,9 +121,11 @@ class Agent():
         if np.random.rand() < self.eps:
             return np.random.randint(0, self.n_act), 0
         else:
-            s = Variable(st)
+            #s = Variable(st)
+            s = Variable(cuda.to_gpu(st))
             Q = self.model.Q_func(s)
-            Q = Q.data[0]
+            #Q = Q.data[0]
+            Q = Q.data.get()[0]
             a = np.argmax(Q)
             return np.asarray(a, dtype=np.int8), max(Q)
 
