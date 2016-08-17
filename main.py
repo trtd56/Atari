@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import gym, sys
+import gym, argparse, sys
 import numpy as np
 
 from agent import Agent
 
-def main(env_name, monitor=True, load=False, seed=0):
+def main(env_name, monitor=True, load=False, seed=0, gpu=-1):
 
     env = gym.make(env_name)
     view_path = "./video/" + env_name
@@ -15,7 +15,7 @@ def main(env_name, monitor=True, load=False, seed=0):
     n_st = env.observation_space.shape[0]
     n_act = env.action_space.n
 
-    agent = Agent(n_act, seed)
+    agent = Agent(n_act, seed, gpu)
     if load:
         agent.load_model(model_path)
 
@@ -46,5 +46,9 @@ def main(env_name, monitor=True, load=False, seed=0):
 if __name__=="__main__":
     #env_name = sys.argv[1]
     #main(env_name)
+    parser = argparse.ArgumentParser(description='solve Atari problem.')
+    parser.add_argument('--gpu', '-g', type=int, default=-1,
+                        help='GPU ID (negative value indicates CPU)')
+    args = parser.parse_args()
     env_name = "Breakout-v0"
-    main(env_name, monitor=True, load=False, seed=0)
+    main(env_name, monitor=True, load=False, seed=0, gpu=args.gpu)
