@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import gym, argparse, sys
+import gym, argparse
 import numpy as np
 
 from agent import Agent
@@ -28,14 +28,12 @@ def main(env_name, monitor=True, load=False, seed=0, gpu=-1):
         q_list = []
         r_list = []
         while not ep_end:
-            #env.render()
             action = agent.act()
             observation, reward, ep_end, _ = env.step(action)
             agent.update_experience(observation, action, reward, ep_end)
             agent.train()
             q_list.append(agent.Q)
             r_list.append(reward)
-            #print('%i\t%i\t%f\t%i\t%i\t%f' % (i_episode, agent.step, agent.eps, action, reward, agent.Q))
             if ep_end:
                 agent.save_model(model_path)
                 break
@@ -47,7 +45,8 @@ if __name__=="__main__":
     parser = argparse.ArgumentParser(description='solve Atari problem.')
     parser.add_argument('--gpu', '-g', type=int, default=-1,
                         help='GPU ID (negative value indicates CPU)')
+    parser.add_argument('--env', '-e', type=str, default="Breakout-v0",
+                        help='OpenAI Gym Atari environment name.(negative environment is Breakout)')
     args = parser.parse_args()
-    env_name = "Breakout-v0"
-    #env_name = "Pong-v0"
-    main(env_name, monitor=True, load=False, seed=0, gpu=args.gpu)
+
+    main(args.env, monitor=True, load=False, seed=0, gpu=args.gpu)

@@ -40,7 +40,7 @@ class Agent():
 
         self.n_history = 4
         self.gamma = 0.99
-        self.mem_size = 1e5
+        self.mem_size = 4e4
         self.batch_size = 32
         self.eps = 1
         self.eps_decay = 1e-6
