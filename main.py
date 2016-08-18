@@ -28,7 +28,7 @@ def main(env_name, monitor=True, load=False, seed=0, gpu=-1):
         q_list = []
         r_list = []
         while not ep_end:
-            env.render()
+            #env.render()
             action = agent.act()
             observation, reward, ep_end, _ = env.step(action)
             agent.update_experience(observation, action, reward, ep_end)
@@ -44,11 +44,10 @@ def main(env_name, monitor=True, load=False, seed=0, gpu=-1):
         env.monitor.close()
 
 if __name__=="__main__":
-    #env_name = sys.argv[1]
-    #main(env_name)
     parser = argparse.ArgumentParser(description='solve Atari problem.')
     parser.add_argument('--gpu', '-g', type=int, default=-1,
                         help='GPU ID (negative value indicates CPU)')
     args = parser.parse_args()
     env_name = "Breakout-v0"
+    #env_name = "Pong-v0"
     main(env_name, monitor=True, load=False, seed=0, gpu=args.gpu)

@@ -18,9 +18,7 @@ class Neuralnet(Chain):
             L1 = F.Convolution2D(n_in, 32, ksize=8, stride=4, nobias=False, wscale=np.sqrt(2)),
             L2 = F.Convolution2D(32, 64, ksize=4, stride=2, nobias=False, wscale=np.sqrt(2)),
             L3 = F.Convolution2D(64, 64, ksize=3, stride=1, nobias=False, wscale=np.sqrt(2)),
-            #L4 = L.Linear(3136, 512),
             L4 = L.Linear(3136, 512, wscale=np.sqrt(2)),
-            #Q_value = L.Linear(512, n_out)
             Q_value = L.Linear(512, n_out, initialW=np.zeros((n_out, 512), dtype=np.float32))
 
         )
@@ -42,7 +40,7 @@ class Agent():
 
         self.n_history = 4
         self.gamma = 0.99
-        self.mem_size = 1e4
+        self.mem_size = 1e5
         self.batch_size = 32
         self.eps = 1
         self.eps_decay = 1e-6
@@ -96,7 +94,7 @@ class Agent():
         td_tmp = td.data + 1000.0 * (abs(td.data) <= 1)  # Avoid zero division
         td_clip = td * (abs(td.data) <= 1) + td/abs(td_tmp) * (abs(td.data) > 1)
         if self.gpu >= 0:
-            zero_val = Variable(cupy.to_gpu(np.zeros((self.batch_size, self.n_act), dtype=np.float32)))
+            zero_val = Variable(cuda.to_gpu(np.zeros((self.batch_size, self.n_act), dtype=np.float32)))
         else:
             zero_val = Variable(np.zeros((self.batch_size, self.n_act), dtype=np.float32))
         loss = F.mean_squared_error(td_clip, zero_val)
@@ -184,7 +182,7 @@ class Agent():
 
     def save_model(self, model_dir):
         if self.gpu >= 0:
-            serializers.save_npz(model_dir + "model.npz", self.model.get())
+            serializers.save_npz(model_dir + "model.npz", self.model)
         else:
             serializers.save_npz(model_dir + "model.npz", self.model)
 
