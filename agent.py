@@ -3,6 +3,7 @@
 
 import copy, sys, random
 import numpy as np
+#import cupy as np
 from collections import deque
 import scipy.misc as spm
 
@@ -54,7 +55,8 @@ class Agent():
             chainer.cuda.get_device(gpu).use()
             self.model = self.model.to_gpu()
         self.target_model = copy.deepcopy(self.model)
-        self.optimizer = optimizers.Adam()
+        self.optimizer = optimizers.SMORMS3()
+	
         self.optimizer.setup(self.model)
 
         self.n_act = n_act
